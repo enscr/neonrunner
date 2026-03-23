@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Runner 3D</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            user-select: none;
+        }
+
+        #game-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            box-sizing: border-box;
+            z-index: 10;
+        }
+
+        .top-ui {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        #score-display {
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #fff, 0 0 20px #0ff;
+        }
+
+        #status-display {
+            text-align: right;
+        }
+
+        .status-item {
+            margin-bottom: 5px;
+            font-weight: bold;
+            font-size: 18px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            text-shadow: 0 0 10px currentColor;
+        }
+
+        .status-active { opacity: 1; }
+        #shield-status { color: #0088ff; }
+        #slow-status { color: #00ff00; }
+        #dash-status { color: #ffaa00; font-style: italic; letter-spacing: 2px;}
+
+        /* Jump Indicator */
+        #jump-indicator {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 12px;
+            background: #111;
+            border: 1px solid #444;
+            border-radius: 6px;
+            overflow: hidden;
+            display: none;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
+        }
+        #jump-bar {
+            width: 100%;
+            height: 100%;
+            background: #0ff;
+            transition: width 0.1s linear;
+            box-shadow: 0 0 10px #0ff;
+        }
+        #jump-text {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 14px;
+            font-weight: bold;
+            color: #fff;
+            display: none;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-shadow: 0 0 5px #0ff;
+        }
+
+        /* MENU STYLES */
+        #game-menu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 30px 50px;
+            border: 2px solid #fff;
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            pointer-events: auto;
+            box-shadow: 0 0 50px rgba(255, 255, 255, 0.2), inset 0 0 20px rgba(255,255,255,0.1);
+            backdrop-filter: blur(15px);
+            min-width: 350px;
+            transition: border-color 1s;
+        }
+
+        h1 {
+            margin: 0 0 10px 0;
+            font-size: 40px;
+            color: #fff;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            text-shadow: 0 0 10px #fff, 0 0 30px #0ff;
+        }
+
+        #game-status-message {
+            margin-bottom: 15px;
+            font-size: 18px;
+            color: #fff;
+            min-height: 24px;
+            text-shadow: 0 0 5px #fff;
+        }
+
+        .menu-section {
+            margin: 15px 0;
+            width: 100%;
+            border-top: 1px solid #444;
+            padding-top: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            color: #ccc;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 1px;
+        }
+
+        .mode-selector {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+
+        .mode-btn {
+            background: #222;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 8px 15px;
+            cursor: pointer;
+            border-radius: 5px;
+            flex: 1;
+            transition: all 0.2s;
+        }
+
+        .mode-btn.active {
+            background: #fff;
+            color: #000;
+            border-color: #fff;
+            box-shadow: 0 0 15px #fff;
+        }
+
+        input[type=range] {
+            width: 100%;
+            cursor: pointer;
+        }
+        #speed-val {
+            color: #fff;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+
+        #start-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 2px solid #fff;
+            padding: 15px 50px;
+            font-size: 22px;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: 0.3s;
+            font-weight: bold;
+            margin-top: 20px;
+            letter-spacing: 2px;
+            width: 100%;
+            box-shadow: 0 0 15px rgba(255,255,255,0.2);
+        }
+
+        #start-btn:hover {
+            background: #fff;
+            color: #000;
+            box-shadow: 0 0 30px #fff;
+        }
+
+        #mute-btn {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            pointer-events: auto;
+            background: transparent;
+            border: 1px solid #fff;
+            color: white;
+            padding: 5px 10px;
+            font-size: 12px;
+            opacity: 0.5;
+        }
+        #mute-btn:hover { opacity: 1; }
+        
+        .hidden { display: none !important; }
+    </style>
+    
+    <!-- Import Map für Module -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+
+    <div id="game-container"></div>
+
+    <div id="ui-layer">
+        <div class="top-ui">
+            <div id="score-display">SCORE: 0</div>
+            <div id="status-display">
+                <div id="shield-status" class="status-item">🛡️ SCHILD</div>
+                <div id="slow-status" class="status-item">⏱️ ZEITLUPE</div>
+                <div id="dash-status" class="status-item">🔥 DASH 🔥</div>
+            </div>
+        </div>
+        
+        <div id="jump-text">BEREIT</div>
+        <div id="jump-indicator">
+            <div id="jump-bar"></div>
+        </div>
+
+        <div id="game-menu">
+            <h1 id="menu-title">Crystal Runner</h1>
+            <div id="game-status-message"></div>
+            
+            <div class="menu-section">
+                <label>Spielmodus</label>
+                <div class="mode-selector">
+                    <button class="mode-btn active" id="mode-1p">1 Player</button>
+                    <button class="mode-btn" id="mode-2p">2 Players</button>
+                </div>
+                <div id="controls-info" style="font-size: 12px; color: #aaa; margin-top:5px;">
+                    P1: TAP = Sprung, HOLD = Dash (Wände brechen)
+                </div>
+            </div>
+
+            <div class="menu-section">
+                <label>Geschwindigkeit: <span id="speed-val">5</span></label>
+                <input type="range" id="speed-slider" min="1" max="10" value="5">
+            </div>
+
+            <button id="start-btn">GO!</button>
+        </div>
+
+        <button id="mute-btn">🔊 SOUND ON</button>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+        // --- THEMES ---
+        const THEMES = [
+            {
+                name: "Classic Neon",
+                colorFog: 0x050510, colorGrid: 0xff00ff, colorLight: 0x00ffff, colorBg: 0x1a0033,
+                bass: [36, 36, 43, 36, 38, 38, 41, 33], scale: [60, 63, 65, 67, 70, 72, 75]
+            },
+            {
+                name: "Matrix Green",
+                colorFog: 0x001000, colorGrid: 0x00ff00, colorLight: 0x55ff55, colorBg: 0x001a00,
+                bass: [28, 28, 40, 28, 31, 31, 35, 28], scale: [64, 67, 69, 71, 74, 76]
+            },
+            {
+                name: "Cyber Red",
+                colorFog: 0x150000, colorGrid: 0xff0000, colorLight: 0xff3300, colorBg: 0x2a0000,
+                bass: [38, 38, 39, 38, 31, 31, 34, 31], scale: [62, 63, 66, 67, 69, 70, 74]
+            },
+            {
+                name: "Ice Blue",
+                colorFog: 0x000520, colorGrid: 0x0088ff, colorLight: 0x00aaff, colorBg: 0x001133,
+                bass: [33, 33, 45, 33, 40, 33, 38, 33], scale: [57, 60, 62, 64, 67, 69]
+            }
+        ];
+
+        // --- AUDIO ENGINE ---
+        class AudioEngine {
+            constructor() {
+                this.ctx = null;
+                this.isMuted = false;
+                this.masterGain = null;
+                this.isPlaying = false;
+                this.bassLine = [...THEMES[0].bass];
+                this.melodyScale = [...THEMES[0].scale];
+                this.tempo = 115;
+                this.noteIndex = 0;
+                this.nextNoteTime = 0;
+            }
+
+            init() {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if(!this.ctx) {
+                    this.ctx = new AudioContext();
+                    this.masterGain = this.ctx.createGain();
+                    this.masterGain.gain.value = 0.35;
+                    this.masterGain.connect(this.ctx.destination);
+                }
+                if(this.ctx.state === 'suspended') this.ctx.resume();
+            }
+
+            setTheme(themeIndex) {
+                const t = THEMES[themeIndex];
+                this.bassLine = t.bass;
+                this.melodyScale = t.scale;
+                this.sfxShift();
+            }
+
+            toggleMute() {
+                this.isMuted = !this.isMuted;
+                if(this.masterGain) {
+                    this.masterGain.gain.setTargetAtTime(this.isMuted ? 0 : 0.35, this.ctx.currentTime, 0.1);
+                }
+                return this.isMuted;
+            }
+
+            playTone(freq, type, duration, time, vol=0.2) {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.value = freq;
+                osc.connect(gain);
+                gain.connect(this.masterGain);
+                const t = time || this.ctx.currentTime;
+                gain.gain.setValueAtTime(0, t);
+                gain.gain.linearRampToValueAtTime(vol, t + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+                osc.start(t);
+                osc.stop(t + duration);
+            }
+
+            sfxJump() {
+                this.playTone(150, 'triangle', 0.3, 0, 0.3);
+                setTimeout(() => this.playTone(300, 'triangle', 0.3, 0, 0.2), 50);
+            }
+            sfxDash() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(100, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(10, this.ctx.currentTime + 0.5);
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.5);
+                osc.connect(gain);
+                gain.connect(this.masterGain);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.5);
+            }
+            sfxCollect() {
+                this.playTone(1200, 'sine', 0.1, 0, 0.1); 
+                setTimeout(() => this.playTone(1800, 'sine', 0.2, 0, 0.1), 50);
+            }
+            sfxCrash() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(80, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(10, this.ctx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.3);
+                osc.connect(gain);
+                gain.connect(this.masterGain);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.3);
+            }
+            sfxShift() {
+                this.playTone(300, 'sine', 0.5, 0, 0.1);
+            }
+
+            startMusic() {
+                if(!this.ctx) this.init();
+                if(this.isPlaying) return;
+                this.isPlaying = true;
+                this.noteIndex = 0;
+                this.nextNoteTime = this.ctx.currentTime;
+                this.scheduler();
+            }
+            stopMusic() {
+                this.isPlaying = false;
+                clearTimeout(this.timerID);
+            }
+            scheduler() {
+                if(!this.isPlaying) return;
+                while (this.nextNoteTime < this.ctx.currentTime + 0.1) {
+                    this.scheduleNote(this.noteIndex, this.nextNoteTime);
+                    this.nextNote();
+                }
+                this.timerID = setTimeout(() => this.scheduler(), 25);
+            }
+            nextNote() {
+                const secondsPerBeat = 60.0 / this.tempo;
+                this.nextNoteTime += 0.25 * secondsPerBeat; 
+                this.noteIndex++;
+            }
+            scheduleNote(noteIndex, time) {
+                const beatInBar = noteIndex % 16;
+                if (beatInBar % 4 === 0) {
+                    const note = this.bassLine[Math.floor(noteIndex / 16) % this.bassLine.length];
+                    const freq = 440 * Math.pow(2, (note - 69) / 12);
+                    this.playTone(freq, 'sawtooth', 0.3, time, 0.25);
+                }
+                if (noteIndex % 32 === 0 && Math.random() > 0.3) {
+                    this.playArpeggio(time);
+                }
+                if(beatInBar % 4 === 2) { 
+                    this.playTone(8000, 'square', 0.04, time, 0.01);
+                }
+            }
+            playArpeggio(startTime) {
+                const noteCount = 4;
+                const secondsPer16th = (60.0 / this.tempo) * 0.25;
+                for(let i=0; i<noteCount; i++) {
+                    const midi = this.melodyScale[Math.floor(Math.random() * this.melodyScale.length)];
+                    const freq = 440 * Math.pow(2, (midi - 69) / 12);
+                    this.playTone(freq, 'sine', 0.15, startTime + (i * secondsPer16th), 0.15);
+                }
+            }
+        }
+
+        // --- GLOBALS ---
+        const audio = new AudioEngine();
+        let scene, camera, renderer, composer; // Added composer
+        let bgMesh, dirLight;
+        let gameObjects = []; 
+        let particles = [];
+        let floorSegments = [];
+        let players = [];
+
+        const LANE_WIDTH = 2.5; 
+        const NUM_LANES = 5;
+        const LANE_LIMIT = 2;
+        const SEGMENT_COUNT = 40;
+        const SEGMENT_LENGTH = 4;
+        
+        let playerCount = 1;
+        let initialSpeedLevel = 5;
+        let score = 0;
+        let gameSpeed = 0;
+        let targetSpeed = 0.6; 
+        let MAX_SPEED = 1.4;
+        let isGameOver = true;
+        let shieldActive = false;
+        let shieldTimer = null;
+
+        let currentThemeIndex = 0;
+        let themeTimer = 0;
+        let currentFogColor = new THREE.Color(THEMES[0].colorFog);
+        let currentGridColor = new THREE.Color(THEMES[0].colorGrid);
+        let currentBgColor = new THREE.Color(THEMES[0].colorBg);
+        let currentLightColor = new THREE.Color(THEMES[0].colorLight);
+        
+        let currentCurve = 0; 
+        let targetCurve = 0; 
+        let curveChangeTimer = 0;
+
+        // DOM
+        const scoreEl = document.getElementById('score-display');
+        const menuEl = document.getElementById('game-menu');
+        const startBtn = document.getElementById('start-btn');
+        const shieldStatusEl = document.getElementById('shield-status');
+        const slowStatusEl = document.getElementById('slow-status');
+        const dashStatusEl = document.getElementById('dash-status');
+        const muteBtn = document.getElementById('mute-btn');
+        const controlInfoEl = document.getElementById('controls-info');
+        const jumpIndicator = document.getElementById('jump-indicator');
+        const jumpBar = document.getElementById('jump-bar');
+        const jumpText = document.getElementById('jump-text');
+
+        // Mode Buttons & Slider Logic (Moved to init or global scope handling)
+        document.getElementById('mode-1p').addEventListener('click', () => setMode(1));
+        document.getElementById('mode-2p').addEventListener('click', () => setMode(2));
+        document.getElementById('speed-slider').addEventListener('input', (e) => updateSpeedLabel(e.target.value));
+        
+        function setMode(num) {
+            playerCount = num;
+            document.getElementById('mode-1p').classList.toggle('active', num === 1);
+            document.getElementById('mode-2p').classList.toggle('active', num === 2);
+            if(num === 1) {
+                controlInfoEl.innerText = "P1: Pfeiltasten + ▲ Sprung (oder WASD)";
+            } else {
+                controlInfoEl.innerHTML = "<span style='color:#0ff'>P1 (Cyan): Pfeile + ▲</span> | <span style='color:#d0f'>P2 (Pink): WASD + W</span>";
+            }
+        }
+
+        function updateSpeedLabel(val) {
+            initialSpeedLevel = parseInt(val);
+            document.getElementById('speed-val').innerText = val;
+        }
+
+        // --- PLAYER CLASS ---
+        class Runner {
+            constructor(color, controls, startLane) {
+                this.mesh = this.createMesh(color);
+                this.controls = controls; 
+                this.lane = startLane;
+                this.velocityY = 0;
+                this.isJumping = false;
+                this.canJump = true;
+                this.jumpCooldownTime = 10000; 
+                this.lastJumpTime = 0;
+                this.isDead = false;
+                this.baseColor = new THREE.Color(color);
+                this.isDashing = false;
+                this.dashTime = 0;
+                this.dashDuration = 500; 
+                this.jumpKeyDownTime = 0;
+                this.jumpKeyHeld = false;
+            }
+
+            createMesh(color) {
+                const geometry = new THREE.SphereGeometry(0.8, 32, 32);
+                // High emissive for Bloom
+                const material = new THREE.MeshStandardMaterial({ 
+                    color: color, 
+                    emissive: color,
+                    emissiveIntensity: 0.8, // Base glow
+                    roughness: 0.1,
+                    metalness: 0.9
+                });
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.castShadow = true;
+                mesh.position.y = 0.8;
+                
+                const haloGeo = new THREE.SphereGeometry(1.1, 16, 16);
+                const haloMat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.2, wireframe: true });
+                const halo = new THREE.Mesh(haloGeo, haloMat);
+                mesh.add(halo);
+
+                const shieldGeo = new THREE.SphereGeometry(1.4, 16, 16);
+                const shieldMat = new THREE.MeshBasicMaterial({ color: 0x0088ff, transparent: true, opacity: 0, wireframe: true });
+                const shield = new THREE.Mesh(shieldGeo, shieldMat);
+                shield.name = "shieldVisual";
+                mesh.add(shield);
+                
+                const pLight = new THREE.PointLight(color, 2, 15); // Stronger light
+                pLight.name = "playerLight";
+                mesh.add(pLight);
+                
+                scene.add(mesh);
+                return mesh;
+            }
+
+            handleInputDown(key) {
+                if (this.isDead) return;
+                const k = key.toLowerCase();
+                
+                // FIXED: Check for lowercase keys (arrowleft, arrowright)
+                if (this.controls.left.includes(k) && this.lane > -LANE_LIMIT) this.lane--;
+                if (this.controls.right.includes(k) && this.lane < LANE_LIMIT) this.lane++;
+                
+                if (this.controls.jump.includes(k)) {
+                    if (!this.jumpKeyHeld) {
+                        this.jumpKeyDownTime = Date.now();
+                        this.jumpKeyHeld = true;
+                    }
+                }
+            }
+
+            handleInputUp(key) {
+                if (this.isDead) return;
+                const k = key.toLowerCase();
+                if (this.controls.jump.includes(k)) {
+                    this.jumpKeyHeld = false;
+                    const duration = Date.now() - this.jumpKeyDownTime;
+                    if (duration < 250 && this.canJump && !this.isJumping && !this.isDashing) {
+                        this.triggerJump();
+                    }
+                }
+            }
+
+            triggerJump() {
+                this.isJumping = true;
+                this.useCooldown();
+                this.velocityY = 0.6; 
+                audio.sfxJump();
+            }
+
+            triggerDash() {
+                this.isDashing = true;
+                this.dashTime = Date.now();
+                this.useCooldown();
+                audio.sfxDash();
+                
+                // Intense Dash Glow
+                this.mesh.material.emissive.setHex(0xffaa00);
+                this.mesh.material.emissiveIntensity = 5.0; // Super bright
+                
+                createExplosion(this.mesh.position, 0xffaa00, 20);
+            }
+
+            useCooldown() {
+                this.canJump = false;
+                this.lastJumpTime = Date.now();
+                this.mesh.material.emissive.setHex(0x330000); 
+                this.mesh.material.emissiveIntensity = 0.2;
+            }
+
+            update(speed, curve) {
+                if(this.isDead) return;
+                const now = Date.now();
+
+                if (this.jumpKeyHeld && this.canJump && !this.isJumping && !this.isDashing) {
+                    if (now - this.jumpKeyDownTime > 250) {
+                        this.triggerDash();
+                        this.jumpKeyHeld = false; 
+                    }
+                }
+
+                if (this.isDashing) {
+                    if (now - this.dashTime > this.dashDuration) {
+                        this.isDashing = false;
+                        this.mesh.material.emissive.setHex(0x330000);
+                        this.mesh.material.emissiveIntensity = 0.2;
+                    } else {
+                        this.mesh.rotation.x += 0.5;
+                        if (Math.random() > 0.5) createExplosion(this.mesh.position, 0xffaa00, 1);
+                    }
+                }
+
+                if(this === players[0]) {
+                    const dashOn = this.isDashing;
+                    dashStatusEl.style.opacity = dashOn ? 1 : 0;
+                    
+                    if (!this.canJump) {
+                        const progress = Math.min(1, (now - this.lastJumpTime) / this.jumpCooldownTime);
+                        jumpBar.style.width = (progress * 100) + '%';
+                        jumpBar.style.backgroundColor = '#ff0055';
+                        jumpText.innerText = "LÄDT AUF...";
+                        jumpText.style.color = '#ff0055';
+                        
+                        if (progress >= 1) {
+                            this.canJump = true;
+                            audio.playTone(800, 'sine', 0.5, 0, 0.2);
+                        }
+                    } else {
+                        jumpBar.style.width = '100%';
+                        jumpBar.style.backgroundColor = '#00ff88';
+                        jumpText.innerText = "BEREIT (TAP: SPRUNG | HOLD: DASH)";
+                        jumpText.style.color = '#00ff88';
+                        // Pulsing Glow
+                        if(!this.isDashing) {
+                            this.mesh.material.emissive.setHex(this.baseColor.getHex());
+                            this.mesh.material.emissiveIntensity = 1.0 + Math.sin(now * 0.005) * 0.5;
+                        }
+                    }
+                } else {
+                    if(!this.canJump && (now - this.lastJumpTime) > this.jumpCooldownTime) {
+                         this.canJump = true;
+                    }
+                }
+
+                if(this.isJumping) {
+                    this.mesh.position.y += this.velocityY;
+                    this.velocityY -= 0.025; 
+                    if(this.mesh.position.y <= 0.8) {
+                        this.mesh.position.y = 0.8;
+                        this.isJumping = false;
+                        createExplosion(new THREE.Vector3(this.mesh.position.x, 0, 0), 0xaaaaaa, 5);
+                    }
+                }
+
+                const targetX = this.lane * LANE_WIDTH;
+                this.mesh.position.x += (targetX - this.mesh.position.x) * 0.2;
+                this.mesh.rotation.z = (this.mesh.position.x - targetX) * -0.1 - (curve * 0.1);
+                if(!this.isDashing) this.mesh.rotation.x += speed * 0.15;
+            }
+            
+            destroy() {
+                createExplosion(this.mesh.position, this.mesh.material.color.getHex(), 30);
+                scene.remove(this.mesh);
+                this.isDead = true;
+            }
+        }
+
+        function initThreeJS() {
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(currentFogColor.getHex(), 0.02); 
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 200);
+            camera.position.set(0, 5, 10);
+            camera.lookAt(0, 0, -15);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            // Enable Tone Mapping for Bloom
+            renderer.toneMapping = THREE.ReinhardToneMapping;
+            renderer.shadowMap.enabled = true;
+            document.getElementById('game-container').appendChild(renderer.domElement);
+
+            // --- POST PROCESSING (BLOOM) ---
+            const renderScene = new RenderPass(scene, camera);
+            // Resolution, Strength, Radius, Threshold
+            const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+            bloomPass.strength = 2.0; // High intensity glow
+            bloomPass.radius = 0.5;
+            bloomPass.threshold = 0; // Bloom everything slightly
+
+            composer = new EffectComposer(renderer);
+            composer.addPass(renderScene);
+            composer.addPass(bloomPass);
+
+            scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+            dirLight = new THREE.DirectionalLight(currentLightColor.getHex(), 0.8);
+            dirLight.position.set(20, 40, 10);
+            dirLight.castShadow = true;
+            scene.add(dirLight);
+
+            createFloor();
+            createBackground();
+            
+            // Event Listeners need to be attached here because imports are module scoped
+            startBtn.addEventListener('click', () => { audio.init(); startGame(); });
+            muteBtn.addEventListener('click', () => {
+                if(!audio.ctx) audio.init();
+                const muted = audio.toggleMute();
+                muteBtn.innerText = muted ? "🔇 SOUND OFF" : "🔊 SOUND ON";
+            });
+            
+            // KEY EVENT LISTENERS - Use toLowerCase() for cross-browser/case compatibility
+            window.addEventListener('keydown', (e) => players.forEach(p => p.handleInputDown(e.key)));
+            window.addEventListener('keyup', (e) => players.forEach(p => p.handleInputUp(e.key)));
+            window.addEventListener('resize', onWindowResize);
+            
+            animate();
+        }
+
+        function createBackground() {
+            const geo = new THREE.IcosahedronGeometry(80, 1);
+            // Wireframe needs to be a LineBasicMaterial or MeshBasic with wireframe to bloom well? 
+            const mat = new THREE.MeshBasicMaterial({ 
+                color: currentBgColor.getHex(), 
+                wireframe: true, 
+                transparent: true, 
+                opacity: 0.5,
+            });
+            bgMesh = new THREE.Mesh(geo, mat);
+            scene.add(bgMesh);
+            const starGeo = new THREE.BufferGeometry();
+            const posArray = new Float32Array(1500 * 3);
+            for(let i=0; i<1500*3; i++) posArray[i] = (Math.random() - 0.5) * 200;
+            starGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            // Bright stars
+            scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({color: 0xffffff, size: 0.5})));
+        }
+
+        function createFloor() {
+            for(let i = 0; i < SEGMENT_COUNT; i++) {
+                const geo = new THREE.PlaneGeometry(NUM_LANES * LANE_WIDTH * 2, SEGMENT_LENGTH);
+                const mat = new THREE.MeshStandardMaterial({ 
+                    color: 0x050505, 
+                    emissive: 0x000000, 
+                    roughness: 0.1,
+                    metalness: 0.8,
+                    side: THREE.DoubleSide 
+                });
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.rotation.x = -Math.PI / 2;
+                mesh.receiveShadow = true;
+                
+                // Grid with high color for bloom
+                const gridHelper = new THREE.GridHelper(NUM_LANES * LANE_WIDTH * 2, NUM_LANES * 2, currentGridColor.getHex(), currentGridColor.getHex());
+                gridHelper.rotation.x = -Math.PI / 2;
+                gridHelper.position.z = 0.01; 
+                gridHelper.material.transparent = true;
+                gridHelper.material.opacity = 0.8;
+                mesh.userData.grid = gridHelper; 
+                mesh.add(gridHelper);
+                mesh.position.z = -i * SEGMENT_LENGTH;
+                mesh.userData.zBase = mesh.position.z;
+                scene.add(mesh);
+                floorSegments.push(mesh);
+            }
+        }
+
+        function startGame() {
+            if (!isGameOver) return;
+            isGameOver = false;
+            score = 0;
+            const base = 0.3 + (initialSpeedLevel * 0.1); 
+            targetSpeed = base;
+            MAX_SPEED = base + 0.8; 
+            gameSpeed = targetSpeed;
+            currentCurve = 0; targetCurve = 0;
+            deactivateShield();
+            scoreEl.innerText = "SCORE: 0";
+            menuEl.classList.add('hidden');
+            document.getElementById('menu-title').innerText = "Neon Runner";
+            document.getElementById('game-status-message').innerHTML = "";
+            jumpIndicator.style.display = "block";
+
+            gameObjects.forEach(obj => scene.remove(obj)); gameObjects = [];
+            particles.forEach(p => scene.remove(p)); particles = [];
+            players.forEach(p => scene.remove(p.mesh)); players = [];
+
+            // IMPORTANT: Controls array now uses lowercase keys for compatibility
+            if(playerCount === 1) {
+                players.push(new Runner(0x00ffff, { 
+                    left: ['arrowleft', 'a'], 
+                    right: ['arrowright', 'd'], 
+                    jump: [' ', 'arrowup', 'w'] 
+                }, 0));
+            } else {
+                players.push(new Runner(0x00ffff, { 
+                    left: ['arrowleft'], right: ['arrowright'], jump: ['arrowup'] 
+                }, 1));
+                players.push(new Runner(0xff00ff, { 
+                    left: ['a'], right: ['d'], jump: ['w'] 
+                }, -1));
+            }
+            
+            currentThemeIndex = 0; themeTimer = 0; applyTheme(0, true);
+            audio.startMusic();
+        }
+
+        function applyTheme(index, instant=false) {
+            const t = THEMES[index];
+            if(instant) {
+                currentFogColor.setHex(t.colorFog);
+                currentGridColor.setHex(t.colorGrid);
+                currentBgColor.setHex(t.colorBg);
+                currentLightColor.setHex(t.colorLight);
+            }
+            audio.setTheme(index);
+        }
+
+        function spawnObject() {
+            const lane = Math.floor(Math.random() * NUM_LANES) - LANE_LIMIT;
+            const zBase = -SEGMENT_COUNT * SEGMENT_LENGTH; 
+            const rand = Math.random();
+
+            if (rand < 0.15) {
+                // Powerup
+                const type = Math.random() > 0.5 ? 'shield' : 'slow';
+                const color = type === 'shield' ? 0x0088ff : 0x00ff00;
+                const geo = new THREE.OctahedronGeometry(0.6, 0);
+                // High emissive for bloom
+                const mat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 2.0 });
+                const obj = new THREE.Mesh(geo, mat);
+                obj.position.set(0, 1.5, 0);
+                obj.userData = { type: 'powerup', pType: type, lane: lane, zBase: zBase };
+                scene.add(obj);
+                gameObjects.push(obj);
+            } else if (rand < 0.25) {
+                // Wall
+                const width = 3 * LANE_WIDTH;
+                const height = 4;
+                const group = new THREE.Group();
+                
+                const geo = new THREE.BoxGeometry(width, height, 1);
+                // Obstacle Color - Brighter than environment
+                const mat = new THREE.MeshPhongMaterial({ 
+                    color: 0xff00aa, 
+                    emissive: 0xaa0044,
+                    emissiveIntensity: 0.5,
+                    transparent: true, 
+                    opacity: 0.8,
+                    shininess: 100
+                });
+                const mainMesh = new THREE.Mesh(geo, mat);
+                mainMesh.position.y = height/2;
+                group.add(mainMesh);
+                
+                for(let k=0; k<5; k++) {
+                    const sGeo = new THREE.ConeGeometry(0.5, 2, 4);
+                    const spike = new THREE.Mesh(sGeo, mat);
+                    spike.position.set((Math.random()-0.5)*width, height + Math.random(), (Math.random()-0.5));
+                    group.add(spike);
+                }
+                
+                let wallLane = lane;
+                if(wallLane < -1) wallLane = -1;
+                if(wallLane > 1) wallLane = 1;
+                
+                group.userData = { type: 'wall', lane: wallLane, zBase: zBase, widthLanes: 3 };
+                scene.add(group);
+                gameObjects.push(group);
+
+            } else {
+                // Obstacle
+                const isTall = Math.random() < 0.3;
+                const height = isTall ? 4 : 1.5;
+                
+                let geo;
+                if(Math.random() > 0.5) geo = new THREE.ConeGeometry(1, height, 4); 
+                else geo = new THREE.OctahedronGeometry(1, 0); 
+                
+                // Obstacle Color - Brighter than environment
+                const mat = new THREE.MeshStandardMaterial({ 
+                    color: 0x00ff00, // Neon Green
+                    emissive: 0x00ff00,
+                    emissiveIntensity: 3.0, // Very Bright
+                    roughness: 0.2,
+                    metalness: 0.5
+                });
+                const obj = new THREE.Mesh(geo, mat);
+                obj.position.set(0, height/2, 0);
+                if(!isTall) obj.rotation.x = Math.PI; 
+                
+                obj.userData = { type: 'obstacle', isTall: isTall, lane: lane, zBase: zBase };
+                scene.add(obj);
+                gameObjects.push(obj);
+            }
+        }
+
+        function getCurveOffset(zPos) {
+            const distance = 10 - zPos; 
+            return (distance * distance) * currentCurve * 0.0005;
+        }
+
+        function update() {
+            if(!isGameOver) {
+                themeTimer++;
+                if(themeTimer > 1200) {
+                    themeTimer = 0;
+                    let nextIndex = (currentThemeIndex + 1) % THEMES.length;
+                    currentThemeIndex = nextIndex;
+                    applyTheme(currentThemeIndex);
+                }
+                const t = THEMES[currentThemeIndex];
+                const lerpSpeed = 0.01;
+                currentFogColor.lerp(new THREE.Color(t.colorFog), lerpSpeed);
+                currentGridColor.lerp(new THREE.Color(t.colorGrid), lerpSpeed);
+                currentBgColor.lerp(new THREE.Color(t.colorBg), lerpSpeed);
+                currentLightColor.lerp(new THREE.Color(t.colorLight), lerpSpeed);
+                scene.fog.color.copy(currentFogColor);
+                dirLight.color.copy(currentLightColor);
+                if(bgMesh) {
+                    bgMesh.material.color.copy(currentBgColor);
+                    // Adjust bg intensity for bloom
+                    bgMesh.material.color.multiplyScalar(1.5);
+                }
+                floorSegments.forEach(seg => { if(seg.userData.grid) seg.userData.grid.material.color.copy(currentGridColor); });
+            }
+
+            curveChangeTimer++;
+            if(curveChangeTimer > 200) { 
+                curveChangeTimer = 0; targetCurve = (Math.random() * 8) - 4; 
+            }
+            currentCurve += (targetCurve - currentCurve) * 0.02;
+
+            if(bgMesh) { bgMesh.rotation.z += 0.002; bgMesh.rotation.x = currentCurve * 0.1; }
+            if(isGameOver) { scene.rotation.y += 0.005; return; } else { scene.rotation.y = 0; }
+
+            if (gameSpeed < targetSpeed) gameSpeed += 0.002;
+            else { if (targetSpeed < MAX_SPEED) targetSpeed += 0.0001; gameSpeed = targetSpeed; }
+            score += gameSpeed;
+            scoreEl.innerText = `SCORE: ${Math.floor(score)}`;
+
+            for(let seg of floorSegments) {
+                seg.userData.zBase += gameSpeed;
+                if(seg.userData.zBase > 10) seg.userData.zBase -= SEGMENT_COUNT * SEGMENT_LENGTH;
+                seg.position.z = seg.userData.zBase;
+                seg.position.x = getCurveOffset(seg.position.z);
+                seg.rotation.z = -currentCurve * 0.05; 
+            }
+
+            players.forEach(p => p.update(gameSpeed, currentCurve));
+            
+            let avgX = 0; if(players.length > 0) { players.forEach(p => avgX += p.mesh.position.x); avgX /= players.length; }
+            camera.position.x += (avgX - camera.position.x) * 0.1;
+
+            if(Math.random() < (0.05 * gameSpeed)) {
+                if(gameObjects.length === 0 || gameObjects[gameObjects.length-1].userData.zBase > -SEGMENT_COUNT * SEGMENT_LENGTH + 15) {
+                    spawnObject();
+                }
+            }
+
+            for (let i = gameObjects.length - 1; i >= 0; i--) {
+                let obj = gameObjects[i];
+                obj.userData.zBase += gameSpeed;
+                const curveX = getCurveOffset(obj.userData.zBase);
+                
+                const laneX = obj.userData.lane * LANE_WIDTH;
+                obj.position.z = obj.userData.zBase;
+                obj.position.x = laneX + curveX; 
+                obj.rotation.z = -currentCurve * 0.05;
+                if (obj.userData.type === 'powerup') obj.rotation.y += 0.05;
+                else if (obj.userData.type !== 'wall') { 
+                    obj.rotation.x += 0.02; 
+                    obj.rotation.y += 0.02; 
+                }
+
+                // Collision
+                if (obj.position.z > -1 && obj.position.z < 1) {
+                    for(let p of players) {
+                        let hit = false;
+                        const dx = Math.abs(obj.position.x - p.mesh.position.x);
+                        
+                        if (obj.userData.type === 'wall') {
+                            if (dx < 3.0) hit = true; 
+                        } else {
+                            if (dx < 1.0) hit = true;
+                        }
+
+                        if (hit) {
+                            if(obj.userData.type === 'powerup') {
+                                if(obj.userData.pType === 'shield') activateShield();
+                                if(obj.userData.pType === 'slow') activateSlowMo();
+                                audio.sfxCollect();
+                                scene.remove(obj); gameObjects.splice(i, 1); break; 
+                            } 
+                            else if (obj.userData.type === 'wall') {
+                                if (p.isDashing) {
+                                    createExplosion(obj.position, 0xff00aa, 30);
+                                    audio.sfxCrash(); 
+                                    scene.remove(obj); gameObjects.splice(i, 1); break;
+                                } else if (shieldActive) {
+                                    createExplosion(obj.position, 0xff00aa, 20);
+                                    scene.remove(obj); gameObjects.splice(i, 1); 
+                                    deactivateShield(); break;
+                                } else {
+                                    p.destroy(); gameOver(p); return;
+                                }
+                            }
+                            else {
+                                const pBottom = p.mesh.position.y - 0.8; 
+                                const oTop = obj.userData.isTall ? 4 : 1.5;
+                                if(pBottom < oTop) {
+                                    if(shieldActive || p.isDashing) {
+                                        createExplosion(obj.position, 0xff0055, 10);
+                                        scene.remove(obj); gameObjects.splice(i, 1); 
+                                        if(!p.isDashing) deactivateShield(); 
+                                        break; 
+                                    } else {
+                                        p.destroy(); gameOver(p); return; 
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                if (obj.position.z > 10) { scene.remove(obj); gameObjects.splice(i, 1); }
+            }
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.position.add(p.userData.vel);
+                p.scale.multiplyScalar(0.9);
+                if(p.scale.x < 0.01) { scene.remove(p); particles.splice(i, 1); }
+            }
+        }
+        
+        function createExplosion(pos, color, count=10) {
+            const geo = new THREE.TetrahedronGeometry(0.3, 0); 
+            // High emissive for boom bloom
+            const mat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 2.0 });
+            for(let i=0; i<count; i++) {
+                const p = new THREE.Mesh(geo, mat);
+                p.position.copy(pos);
+                p.userData = { vel: new THREE.Vector3((Math.random()-0.5), (Math.random()-0.5), (Math.random()-0.5)).multiplyScalar(0.8) };
+                particles.push(p);
+                scene.add(p);
+            }
+        }
+
+        function gameOver(deadPlayer) {
+            isGameOver = true;
+            menuEl.classList.remove('hidden');
+            document.getElementById('menu-title').innerText = "GAME OVER";
+            jumpIndicator.style.display = "none";
+            let msg = `Score: ${Math.floor(score)}`;
+            if(playerCount === 2 && deadPlayer) {
+                const loserColor = deadPlayer.mesh.material.color.getHexString() === '00ffff' ? "P1 (Cyan)" : "P2 (Pink)";
+                msg += `<br><span style="color:#ff0055">${loserColor} Crashed!</span>`;
+            }
+            document.getElementById('game-status-message').innerHTML = msg;
+            menuEl.querySelector('#start-btn').innerText = "NOCHMAL";
+            audio.stopMusic();
+            audio.sfxCrash();
+        }
+
+        function activateShield() {
+            shieldActive = true;
+            shieldStatusEl.classList.add('status-active');
+            players.forEach(p => { const s = p.mesh.getObjectByName("shieldVisual"); if(s) s.material.opacity = 0.6; });
+            if(shieldTimer) clearTimeout(shieldTimer);
+            shieldTimer = setTimeout(deactivateShield, 5000);
+        }
+        function deactivateShield() {
+            shieldActive = false;
+            shieldStatusEl.classList.remove('status-active');
+            players.forEach(p => { const s = p.mesh.getObjectByName("shieldVisual"); if(s) s.material.opacity = 0; });
+        }
+        function activateSlowMo() {
+            gameSpeed = targetSpeed * 0.4; 
+            slowStatusEl.classList.add('status-active');
+            setTimeout(() => slowStatusEl.classList.remove('status-active'), 3000);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            update();
+            // Use Composer instead of Renderer directly
+            if(composer) composer.render();
+            else renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            if(composer) composer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // Start init
+        initThreeJS();
+    </script>
+</body>
+</html>
